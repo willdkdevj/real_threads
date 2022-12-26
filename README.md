@@ -4,7 +4,7 @@
 [![Design Badge](https://img.shields.io/badge/-GitHub-blue?style=flat-square&logo=GitHub&logoColor=white&link=https://refactoring.guru/design-patterns)](https://refactoring.guru/design-patterns)
 
 
-<img align="right" width="300" height="450" src="https://github.com/willdkdevj/real_threads/blob/master/assets/demo.png">
+<img align="right" width="400" height="250" src="https://github.com/willdkdevj/real_threads/blob/master/assets/demo.png">
 
 ## Descrição da Aplicação
 A ideia principal é que um cliente se conecte com o servidor, enviando um comando, e baseado nesse comando o servidor execute uma tarefa. Esta tarifa será executada através de comunicação remota, utilizando o **protocolo HTTP**. 
@@ -88,7 +88,7 @@ Aceitando novo cliente na porta 61430
 Aceitando novo cliente na porta 61432
 ```
 
-<img align="middle" width="600" height="200" src="https://github.com/willdkdevj/real_threads/blob/master/assets/modelo1.png">
+<img align="middle" width="400" height="200" src="https://github.com/willdkdevj/real_threads/blob/master/assets/modelo1.png">
 
 A partir desse **ServerSocket** é possível aceitar conexões, através do método accept. O método *accept()* permite devolver o ponto final da comunicação, referente ao que foi informado anteriormente, que o socket é um ponto final de comunicação, desta forma, o ServerSocket retorna um socket ativo.
 > No lado do servidor devemos utilizar para cada cliente uma thread, pois o método accept() da classe ServerSocket é bloqueante
