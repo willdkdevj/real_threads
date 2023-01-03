@@ -1,7 +1,7 @@
 ## Conceito aplicado em projeto sobre o uso de Thread via comunicação TCP/IP
 > Será visto o conceito de concorrência de threads via comunicação via rede (java.util.concurrent - Java 5)
 
-[![Design Badge](https://img.shields.io/badge/-GitHub-blue?style=flat-square&logo=GitHub&logoColor=white&link=https://refactoring.guru/design-patterns)](https://refactoring.guru/design-patterns)
+[![Java Badge](https://img.shields.io/badge/-Java-blue?style=flat-square&logo=GitHub&logoColor=white&link=https://docs.oracle.com/javase/7/docs/api/java/lang/Thread.html)](https://docs.oracle.com/javase/7/docs/api/java/lang/Thread.html)
 
 
 <img align="right" width="400" height="250" src="https://github.com/willdkdevj/real_threads/blob/master/assets/demo.png">
@@ -93,10 +93,167 @@ Aceitando novo cliente na porta 61432
 A partir desse **ServerSocket** é possível aceitar conexões, através do método accept. O método *accept()* permite devolver o ponto final da comunicação, referente ao que foi informado anteriormente, que o socket é um ponto final de comunicação, desta forma, o ServerSocket retorna um socket ativo.
 > No lado do servidor devemos utilizar para cada cliente uma thread, pois o método accept() da classe ServerSocket é bloqueante
 
+## Reuso de Threads (Pool)
+O objetivo agora é que o cliente envie comandos ao servidor, onde baseado nestes comandos são realizadas tarefas. Desta forma, na classe **DistribuirTarefas** que é uma classe auxiliar de **ServidorDeTarefas**, será utilizado a classe *InputStream* a fim de envidar um comando digitado no terminal, instanciando a classe *Scanner* a fim de conseguir interagir com este comando inserido.
+```java
+    @Override
+    public void run() {
+
+        try {
+
+            System.out.println("Distribuindo as tarefas para o cliente " + socket);
+
+            Scanner entradaCliente = new Scanner(socket.getInputStream());
+
+            PrintStream saidaCliente = new PrintStream(socket.getOutputStream());
+
+            processarRequisicaoCliente(entradaCliente, saidaCliente);
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+```
+
+Já no lado do cliente, realizaremos a caminho inverso, ao invés de enviar iremos receber a devolutiva do servidor sobre o status do comando enviado. Para isso, utilizaremos a classe *OutputStream* a fim de obter esta devolutiva e instanciar a classe *PrintStream* para permitir manusear o conteúdo para apresentar no console.
+```java
+private static Thread enviarComando(Socket socket) {
+        return new Thread(new Runnable() {
+
+            @Override
+            public void run() {
+
+                try {
+                    System.out.println("--------- Será encaminhado comando --------");
+
+                    PrintStream saida = new PrintStream(socket.getOutputStream());
+
+                    Scanner teclado = new Scanner(System.in);
+                    while ((teclado.hasNextLine())) {
+                        String linha = teclado.nextLine();
+
+                        // Forçar a parada da de input no teclasso
+                        if (linha.trim().equals("")) break;
+
+                        saida.println(linha);
+                    }
+
+                    saida.close();
+                    teclado.close();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+    }
+
+    private static Thread receberResposta(Socket socket) {
+        return new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    System.out.println("-------- Recebendo resposta do Servidor ---------");
+                    Scanner respostaServidor = new Scanner(socket.getInputStream());
+
+                    while (respostaServidor.hasNextLine()) {
+                        String linha = respostaServidor.nextLine();
+                        System.out.println(linha);
+                    }
+                    // Fechar conexão com o servidor
+                    respostaServidor.close();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+
+    }
+```
+
+Cada *Thread* é mapeada para uma **Thread Nativa** do Sistema Operacional, o que gera um custo na sua criação, desta forma, é necessário ficar atento na quantidade de threads que nossas aplicações disponibilizam para permitir uma melhor administração dos recursos. 
+
+A biblioteca do Java *Concurrent* nos permite utilizar de um recurso nomeado como ***Pool*** para gerenciar e administrar estas instâncias de threads, assim como, limitá-las. Além disso, quando não temos ideia de quão escalável está o processo de criação de threads para atender a demanda podemos utilizar o método [newCachedThreadPool()] da classe estática ***Executors*** que automaticamente é atribuida esta função a JVM administrar a quantidade de instâncias de threads criadas.
+> Obs: Também podemos inserir um número fixo de threads a serem criadas utilizando outro método de Executors, seu nome é newFixedThreadPool(Integer number), onde como argumento passamos o valor de threads limite da piscina (pool).
+
+Utilizando um pool, mesmo sendo de modo estático, podemos definir uma quantidade para atender a distribuição de tarefas. Ao analisarmos que não estamos conseguindo atender ao número de requisições, ou mesmo que o número de requisições tem alta variança, podemos utilizar um cache e deixar por conta da JVM.
+> Obs: Além de utilizarmos um cachê ou informar um valor limite para o pool, também podemos criar uma instância única para a piscina ao utilizar o método newSingleThreadExecutor() que cria uma única thread.
+
+Este gerenciador de instâncias ficará no lado do servidor, logicamente, pois ele que será responsável por tratar as requisições dos clientes e realizar as tratativas para responde-los.
+```java
+    public ServidorDeTarefas() throws IOException {
+        System.out.println("---- Iniciando servidor ----");
+        this.servidor = new ServerSocket(12345);
+        this.threadPool = Executors.newCachedThreadPool();
+    }
+```
+
+A instância da classe *Executors* ao invocar os métodos para criação da Pool, geram um objeto de ***ExecutorService**, na qual não é mais necessário criarmos instância de Threads para passarmos nossos Runnables para sua execução, mas sim, utilizar o método [execute()] para disponibilizar uma tarefa para uma thread de um pool's de threads.
+
+ExecutorService é uma interface e a classe Executors devolve uma implementação do pool, através dos métodos mencionados em cima. Também podemos dizer que a classe Executors é uma fábrica de pools!
+
+### Concorrência de Threads
+Como mencionado, teremos em nossa aplicação a comunicação entre cliente/servidor, onde a partir de uma ação haverá uma reação correspondente a fim de informar seu estado. Mas para fazer este processo o cliente também terá que possuir threads internas para envio e recebimento, pois a ação de enviar bloqueia a ação de receber, desta maneira, deverá haver processos distintos para a realização dos mesmos.
+
+<img align="right" width="400" height="250" src="https://github.com/willdkdevj/real_threads/blob/master/assets/concorrencia.png">
+
+Desta forma, foram criados os métodos **enviarComando** e **receberResposta** que são classes anônimas da ***interface Runnable***. Mas ainda temos que informar a thread principal (a thread do Maain()) que deverá aguardar a finalização do processo das threads de envio e recebimento, antes de seu encerramento, ao invocar o método close(), na qual utilizamos o método [join()]  que permite a thread aguarde até a outra thread conclua o seu processo.
+
+O real problema é o seguinte, estamos inicializando cada thread corretamente, mas o **Socket** é fechado utilizando o método close() na thread principal (main). No momento que é iniciado o processo de envio e recebimento dos dados pelas threads internas (auxiliares), neste processo, é capaz que a thread [main] já tenha encerrado o Socket! 
+
+Já a solução e a seguinte, quando a thread main executa o método join da thread que está realizando um procedimento, ela sabe que precisa aguardar o retorno da execução da thread. Portanto, a thread main ficará esperando até a outra thread acabe.
+
+### Compartilhamento de Variável
+Quando Threads necessitam de compartilhar de um valor presente em uma variável é necessário utilizar um recurso do pacote [java.util.concurrent]. Este problema existe devido ao cachê que a Thread cria para alocar variáveis locais, aproveitando do cachê da CPU, sendo que, a alteração do estado da variável está sendo aplicada a memória principal.
+
+Desta forma, o recurso presente do pacote *Concurrent* é o atributo **volatile**, na qual define que a thread não deve criar um cachê para a variável que está manuseando, mas sim, utilizar a variável presente na memória principal. Desta forma, todas as threads que forem instanciadas e que em suas classes existam este atributos, não importa quantas sejam, todas elas irão buscar da memória principal.
+
+<img align="right" width="400" height="250" src="https://github.com/willdkdevj/real_threads/blob/master/assets/thread_memoria.png">
+
+Outro possibilidade é utilizar as classes ***Atomic*** como tipo para variável, que também faz parte do pacote *Concurrent*, nela estão dispostos métodos para inserir e buscar os valores correspondentes ao tipo da classe, onde possuem a mesma funcionalidade da volatile de compartilhar o conteúdo da variável em memória com todas as threads que a declarem.
+```java
+public class ServidorDeTarefas {
+
+    private ServerSocket servidor;
+    private ExecutorService threadPool;
+    private AtomicBoolean isRodando;
+
+    public ServidorDeTarefas() throws IOException {
+        System.out.println("---Iniciando servidor---");
+        this.servidor = new ServerSocket(12345);
+        this.threadPool = Executors.newCachedThreadPool();
+        this.isRodando = new AtomicBoolean(Boolean.TRUE);
+
+    }
+
+    public void rodar() throws IOException {
+        while (this.isRodando.get()){
+            Socket socket = servidor.accept();
+            System.out.println("Aceitando novo cliente na porta " +socket.getPort());
+
+            DistribuirTarefas distribuirTarefas = new DistribuirTarefas(socket, this);
+            threadPool.execute(distribuirTarefas);
+        }
+    }
+
+    public void parar() throws IOException {
+        this.isRodando.set(Boolean.FALSE);
+        servidor.close();
+        threadPool.shutdown();
+    }
+
+    public static void main(String[] args) throws IOException {
+        ServidorDeTarefas servidorDeTarefas = new ServidorDeTarefas();
+        servidorDeTarefas.rodar();
+        servidorDeTarefas.parar();
+    }
+}
+```
+
 
 
 ## Agradecimentos
-Obrigado por ter acompanhado aos meus esforços em aplicar os conceitos do Design Patterns ao Projeto :octocat:
+Obrigado por ter acompanhado aos meus esforços ao aplicar o conceito de threads na comunicação entre cliente/servidor. :octocat:
 
 Como diria um velho mestre:
 > *"Cedo ou tarde, você vai aprender, assim como eu aprendi, que existe uma diferença entre CONHECER o caminho e TRILHAR o caminho."*

@@ -5,22 +5,43 @@ import br.com.supernova.util.DistribuirTarefas;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ServidorDeTarefas {
 
-    public static void main(String[] args) {
-        try {
-            System.out.println("---------Iniciando Conexão----------");
-            ServerSocket serverSocket = new ServerSocket(12345);
+    private ServerSocket servidor;
+    private ExecutorService threadPool;
+    private AtomicBoolean isRodando;
 
-            while (true) {
-                Socket accept = serverSocket.accept();
-                System.out.println("Aceitando novo cliente na porta " + accept.getPort());
-                DistribuirTarefas distribuirTarefas = new DistribuirTarefas(accept);
-                new Thread(distribuirTarefas).start();
-            }
-        } catch (IOException e) {
-            throw new RuntimeException("Erro ao iniciar o Socket: " + e.getMessage());
+    public ServidorDeTarefas() throws IOException {
+        System.out.println("---Iniciando servidor---");
+        this.servidor = new ServerSocket(12345);
+        this.threadPool = Executors.newCachedThreadPool();
+        this.isRodando = new AtomicBoolean(Boolean.TRUE);
+
+    }
+
+    public void rodar() throws IOException {
+        while (this.isRodando.get()){
+            Socket socket = servidor.accept();
+            System.out.println("Aceitando novo cliente na porta " +socket.getPort());
+
+            DistribuirTarefas distribuirTarefas = new DistribuirTarefas(socket, this);
+            threadPool.execute(distribuirTarefas);
         }
+    }
+
+    public void parar() throws IOException {
+        this.isRodando.set(Boolean.FALSE);
+        servidor.close();
+        threadPool.shutdown();
+    }
+
+    public static void main(String[] args) throws IOException {
+        ServidorDeTarefas servidorDeTarefas = new ServidorDeTarefas();
+        servidorDeTarefas.rodar();
+        servidorDeTarefas.parar();
     }
 }
