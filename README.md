@@ -195,7 +195,7 @@ ExecutorService é uma interface e a classe Executors devolve uma implementaçã
 ### Concorrência de Threads
 Como mencionado, teremos em nossa aplicação a comunicação entre cliente/servidor, onde a partir de uma ação haverá uma reação correspondente a fim de informar seu estado. Mas para fazer este processo o cliente também terá que possuir threads internas para envio e recebimento, pois a ação de enviar bloqueia a ação de receber, desta maneira, deverá haver processos distintos para a realização dos mesmos.
 
-<img align="right" width="400" height="250" src="https://github.com/willdkdevj/real_threads/blob/master/assets/concorrencia.png">
+<img align="middle" width="400" height="200" src="https://github.com/willdkdevj/real_threads/blob/master/assets/concorrencia.png">
 
 Desta forma, foram criados os métodos **enviarComando** e **receberResposta** que são classes anônimas da ***interface Runnable***. Mas ainda temos que informar a thread principal (a thread do Maain()) que deverá aguardar a finalização do processo das threads de envio e recebimento, antes de seu encerramento, ao invocar o método close(), na qual utilizamos o método [join()]  que permite a thread aguarde até a outra thread conclua o seu processo.
 
@@ -208,7 +208,7 @@ Quando Threads necessitam de compartilhar de um valor presente em uma variável 
 
 Desta forma, o recurso presente do pacote *Concurrent* é o atributo **volatile**, na qual define que a thread não deve criar um cachê para a variável que está manuseando, mas sim, utilizar a variável presente na memória principal. Desta forma, todas as threads que forem instanciadas e que em suas classes existam este atributos, não importa quantas sejam, todas elas irão buscar da memória principal.
 
-<img align="right" width="400" height="250" src="https://github.com/willdkdevj/real_threads/blob/master/assets/thread_memoria.png">
+<img align="middle" width="400" height="200" src="https://github.com/willdkdevj/real_threads/blob/master/assets/thread_memoria.png">
 
 Outro possibilidade é utilizar as classes ***Atomic*** como tipo para variável, que também faz parte do pacote *Concurrent*, nela estão dispostos métodos para inserir e buscar os valores correspondentes ao tipo da classe, onde possuem a mesma funcionalidade da volatile de compartilhar o conteúdo da variável em memória com todas as threads que a declarem.
 ```java
