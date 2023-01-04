@@ -1,4 +1,4 @@
-## Conceito aplicado em projeto sobre o uso de Thread via comunicação TCP/IP
+# Conceito aplicado em projeto sobre o uso de Thread via comunicação TCP/IP
 > Será visto o conceito de concorrência de threads via comunicação via rede (java.util.concurrent - Java 5)
 
 [![Java Badge](https://img.shields.io/badge/-Java-blue?style=flat-square&logo=GitHub&logoColor=white&link=https://docs.oracle.com/javase/7/docs/api/java/lang/Thread.html)](https://docs.oracle.com/javase/7/docs/api/java/lang/Thread.html)
@@ -52,7 +52,6 @@ public class TarefaDeCliente {
         } catch (IOException e){
             throw new RuntimeException("Erro ao iniciar Socket (Client): " + e.getMessage());
         }
-
     }
 }
 ```
@@ -112,7 +111,6 @@ O objetivo agora é que o cliente envie comandos ao servidor, onde baseado neste
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-
     }
 ```
 
@@ -128,8 +126,8 @@ private static Thread enviarComando(Socket socket) {
                     System.out.println("--------- Será encaminhado comando --------");
 
                     PrintStream saida = new PrintStream(socket.getOutputStream());
-
                     Scanner teclado = new Scanner(System.in);
+
                     while ((teclado.hasNextLine())) {
                         String linha = teclado.nextLine();
 
@@ -223,7 +221,6 @@ public class ServidorDeTarefas {
         this.servidor = new ServerSocket(12345);
         this.threadPool = Executors.newCachedThreadPool();
         this.isRodando = new AtomicBoolean(Boolean.TRUE);
-
     }
 
     public void rodar() throws IOException {
@@ -250,6 +247,74 @@ public class ServidorDeTarefas {
 }
 ```
 
+## Tratamento de Exceções
+É muito importante estarmos cientes que nossas aplicações podem apresentar comportamentos que não eram esperados, estes comportamentos tem no nome de *exceção*. Mas além de nossas aplicações a própria Thread pode lançar uma exceção, onde caso ocorra o lançamento por lá e nós não realizamos o tratamento no método que sobreescrevemos, no caso, o método [run()] de **Runnable**, esta exceção será lançada para o usuário sem o seu tratamento adequado de legibilidade.
+
+Desta forma, devemos utilizar a estrutura de *try/catch* a fim de realizar a tratativa de um código que pode lançar uma exceção para o usuário. Mas realizar esta tratativa em todo método que sobreescrevermos não é a única alternativa.
+
+Uma das alternativas é utilizar o método [setUncaughtExceptionHandler()] da classe ***Thread*** para receber um objeto que realizará a tratativa de exceção, na qual implementa a interface UncaughtExceptionHandler, para que seja possível personalizar uma exceção, toda vez que for encontrada, tratada para o usuário.
+```java
+    private static Thread receberResposta(Socket socket) {
+
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                System.out.println("-------- Recebendo resposta do Servidor ---------");
+                Scanner respostaServidor = new Scanner(socket.getInputStream());
+
+                while (respostaServidor.hasNextLine()) {
+                    String linha = respostaServidor.nextLine();
+                    System.out.println(linha);
+                }
+                // Fechar conexão com o servidor
+                respostaServidor.close();
+            }
+        });
+
+        thread.setUncaughtExceptionHandler(new treatmentThreadException());
+
+        return thread;
+    }
+```
+
+Feito isso, é necessário desenvolver esta classe que implementará a interface **UncaughtExceptionHandler**, na qual teremos que sobreescrever o método [uncaughtExcetion(Thread t, Throwable e)] a fim de personalizar nossa tratativa de devolutiva.
+```java
+    public class treatmentThreadException implements Thread.UncaughtExceptionHandler {
+    @Override
+    public void uncaughtException(Thread t, Throwable e) {
+        System.out.println("Exceção na thread " + t.getName() + ": " + e.getMessage());
+    }
+}
+```
+
+Agora, e se tivermos utilizando o recurso de *Pool* para que a JVM gerencie as threads que forem criadas? Neste caso, precisamos ter acesso a esta "fabrica de threads" na qual a JVM irá administrar para que nós consigamos personaliza-la e passar os atributos necessários para que as threads que sejam criadas tenham os parâmetros necessários para realizar esta tratativa. Abaixo segue como foi realizado esta tratativa para permitir acessar a *fábrica* e realizar as tratativas.
+```java
+    public ServidorDeTarefas() throws IOException {
+        System.out.println("---Iniciando servidor---");
+        this.servidor = new ServerSocket(12345);
+        this.threadPool = Executors.newCachedThreadPool(new CustomFactoryThread());
+        this.isRodando = new AtomicBoolean(Boolean.TRUE);
+
+    }
+```
+
+Para isso, foi passado como parãmetro do método newCach a classe personalizada que desenvolvemos nomeada como *CustomFactoryThread*, na qual implementa a interface **ThreadFactory**, sendo sobreescrito o método [newThread()] a fim de permitirmos criar e parametrizar a mesma com os valores necessários.
+```java
+    public class CustomFactoryThread implements ThreadFactory {
+        private static Integer number = 1;
+        @Override
+        public Thread newThread(Runnable r) {
+            Thread thread = new Thread(r, "Server Thread-" + number);
+            number++;
+            
+            thread.setUncaughtExceptionHandler(new treatmentThreadException());
+            
+            return thread;
+        }
+    }
+```
+
+Neste caso, só utilizamos o construtor da Thread para passar o *Runnable* que será passado a ela e inserirmos um nome para as threads que serão geradas no lado do servidor. Além disso, com a thread instanciada, invocamos o método setUncaugetExceptionHandler(), para passarmos nossa *Exception* personalizada.
 
 
 ## Agradecimentos

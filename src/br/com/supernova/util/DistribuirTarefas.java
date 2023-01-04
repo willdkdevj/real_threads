@@ -5,15 +5,18 @@ import br.com.supernova.servidor.ServidorDeTarefas;
 import java.io.PrintStream;
 import java.net.Socket;
 import java.util.Scanner;
+import java.util.concurrent.ExecutorService;
 
 public class DistribuirTarefas implements Runnable {
 
     private Socket socket;
     private ServidorDeTarefas servidorDeTarefas;
+    private ExecutorService threadPool;
 
-    public DistribuirTarefas(Socket socket, ServidorDeTarefas servidor) {
+    public DistribuirTarefas(ServidorDeTarefas servidor, Socket socket, ExecutorService threadPool) {
         this.socket = socket;
         this.servidorDeTarefas = servidor;
+        this.threadPool = threadPool;
     }
 
     @Override

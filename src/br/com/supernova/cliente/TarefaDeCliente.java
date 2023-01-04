@@ -1,5 +1,7 @@
 package br.com.supernova.cliente;
 
+import br.com.supernova.exceptions.treatmentThreadException;
+
 import java.io.IOException;
 import java.io.PrintStream;
 import java.net.Socket;
@@ -31,54 +33,59 @@ public class TarefaDeCliente {
     }
 
     private static Thread enviarComando(Socket socket) {
-        return new Thread(new Runnable() {
+        Thread thread = new Thread(new Runnable() {
 
             @Override
             public void run() {
+                System.out.println("--------- Será encaminhado comando --------");
 
+                PrintStream saida = null;
                 try {
-                    System.out.println("--------- Será encaminhado comando --------");
-
-                    PrintStream saida = new PrintStream(socket.getOutputStream());
-
-                    Scanner teclado = new Scanner(System.in);
-                    while ((teclado.hasNextLine())) {
-                        String linha = teclado.nextLine();
-
-                        // Forçar a parada da de input no teclasso
-                        if (linha.trim().equals("")) break;
-
-                        saida.println(linha);
-                    }
-
-                    saida.close();
-                    teclado.close();
+                    saida = new PrintStream(socket.getOutputStream());
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
+
+                Scanner teclado = new Scanner(System.in);
+                while ((teclado.hasNextLine())) {
+                    String linha = teclado.nextLine();
+
+                    // Forçar a parada da de input no teclasso
+                    if (linha.trim().equals("")) break;
+
+                    saida.println(linha);
+                }
+
+                saida.close();
+                teclado.close();
             }
         });
+
+        thread.setUncaughtExceptionHandler(new treatmentThreadException());
+        return thread;
     }
 
     private static Thread receberResposta(Socket socket) {
-        return new Thread(new Runnable() {
+        Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {
+                System.out.println("-------- Recebendo resposta do Servidor ---------");
+                Scanner respostaServidor = null;
                 try {
-                    System.out.println("-------- Recebendo resposta do Servidor ---------");
-                    Scanner respostaServidor = new Scanner(socket.getInputStream());
-
-                    while (respostaServidor.hasNextLine()) {
-                        String linha = respostaServidor.nextLine();
-                        System.out.println(linha);
-                    }
-                    // Fechar conexão com o servidor
-                    respostaServidor.close();
+                    respostaServidor = new Scanner(socket.getInputStream());
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
+
+                while (respostaServidor.hasNextLine()) {
+                    String linha = respostaServidor.nextLine();
+                    System.out.println(linha);
+                }
+                // Fechar conexão com o servidor
+                respostaServidor.close();
             }
         });
-
+        thread.setUncaughtExceptionHandler(new treatmentThreadException());
+        return thread;
     }
 }

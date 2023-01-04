@@ -1,5 +1,6 @@
 package br.com.supernova.servidor;
 
+import br.com.supernova.util.CustomFactoryThread;
 import br.com.supernova.util.DistribuirTarefas;
 
 import java.io.IOException;
@@ -18,7 +19,7 @@ public class ServidorDeTarefas {
     public ServidorDeTarefas() throws IOException {
         System.out.println("---Iniciando servidor---");
         this.servidor = new ServerSocket(12345);
-        this.threadPool = Executors.newCachedThreadPool();
+        this.threadPool = Executors.newCachedThreadPool(new CustomFactoryThread());
         this.isRodando = new AtomicBoolean(Boolean.TRUE);
 
     }
@@ -28,7 +29,7 @@ public class ServidorDeTarefas {
             Socket socket = servidor.accept();
             System.out.println("Aceitando novo cliente na porta " +socket.getPort());
 
-            DistribuirTarefas distribuirTarefas = new DistribuirTarefas(socket, this);
+            DistribuirTarefas distribuirTarefas = new DistribuirTarefas(this, socket, threadPool);
             threadPool.execute(distribuirTarefas);
         }
     }
