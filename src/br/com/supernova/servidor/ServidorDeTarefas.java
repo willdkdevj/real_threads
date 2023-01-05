@@ -25,9 +25,9 @@ public class ServidorDeTarefas {
     }
 
     public void rodar() throws IOException {
-        while (this.isRodando.get()){
+        while (this.isRodando.get()) {
             Socket socket = servidor.accept();
-            System.out.println("Aceitando novo cliente na porta " +socket.getPort());
+            System.out.println("Aceitando novo cliente na porta " + socket.getPort());
 
             DistribuirTarefas distribuirTarefas = new DistribuirTarefas(this, socket, threadPool);
             threadPool.execute(distribuirTarefas);
