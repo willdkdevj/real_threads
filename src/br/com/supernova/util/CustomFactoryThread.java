@@ -1,6 +1,6 @@
 package br.com.supernova.util;
 
-import br.com.supernova.exceptions.treatmentThreadException;
+import br.com.supernova.exceptions.TreatmentThreadException;
 
 import java.util.concurrent.ThreadFactory;
 
@@ -11,7 +11,7 @@ public class CustomFactoryThread implements ThreadFactory {
         Thread thread = new Thread(r, "Server Thread-" + number);
         number++;
 
-        thread.setUncaughtExceptionHandler(new treatmentThreadException());
+        thread.setUncaughtExceptionHandler(new TreatmentThreadException());
 
         return thread;
     }

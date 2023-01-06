@@ -1,6 +1,6 @@
 package br.com.supernova.cliente;
 
-import br.com.supernova.exceptions.treatmentThreadException;
+import br.com.supernova.exceptions.TreatmentThreadException;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -61,7 +61,7 @@ public class TarefaDeCliente {
             }
         });
 
-        thread.setUncaughtExceptionHandler(new treatmentThreadException());
+        thread.setUncaughtExceptionHandler(new TreatmentThreadException());
         return thread;
     }
 
@@ -85,7 +85,7 @@ public class TarefaDeCliente {
                 respostaServidor.close();
             }
         });
-        thread.setUncaughtExceptionHandler(new treatmentThreadException());
+        thread.setUncaughtExceptionHandler(new TreatmentThreadException());
         return thread;
     }
 }

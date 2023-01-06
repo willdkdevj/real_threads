@@ -340,17 +340,15 @@ Executor executor = Executors.newCachedThreadPool();
 Future<String> future = executor.submit(new ComandoC2BD(saida));
 ```
 
-Mas agora tem algo de diferente, pois o comando *execute* não nos devolvia nada, pois seu retorno é nulo (*void*), mas o comando **submit** nos devolve um tipo como valor, e seu nome é ***Future***.
+Mas agora tem algo de diferente, pois o comando *execute* não nos devolvia nada, pois seu retorno é nulo (*void*), mas o comando **submit** nos devolve um tipo como valor, e seu nome é um ***Future***.
 
 A ideia do *Future* é que já exista um retorno para a thread desde que invocado o método **get()**. mas este retorno só será possível acessa-lo quando estiver pronto. O nome *Future* soa estranho, mas faz todo sentido se pensarmos que a tarefa passada para o *pool* será executada em algum momento no futuro. No entanto, o método **submit()** não bloqueia a execução e podemos submeter quantas tarefas quisermos.
-```java
-
-```
 
 Então, o que será feito? Será criada uma nova thread que receberá o retorno estas duas threads<Callable>, mas com um diferencial. Ela não retornará nada! Mas será responsável pelo retorno das suas e seu tempo de execução.
+
 <img align="middle" width="400" height="250" src="https://github.com/willdkdevj/real_threads/blob/master/assets/commandc2.png">
 
-O método **get()** desta classe *Future* bloqueia a thread e aguarda o resultado de seu processo. Portanto, é por isso que será criada uma nova thread (TratamentoThreadsCallable) a fim de obter o retorno destas outras threads, mas tembém fornecer um tempo limitado para sua execução. Isso é útil quando não podemos garantir que a execução realmente termine com sucesso.
+O método **get()** desta classe *Future* bloqueia a thread e aguarda o resultado de seu processo. Portanto, é por isso que foi criada uma nova thread (TratamentoThreadsCallable) a fim de obter o retorno destas outras threads, mas tembém fornecer um tempo limitado para sua execução. Isso é útil quando não podemos garantir que a execução realmente termine com sucesso.
 ```java
 public class TratamentoThreadsCallable implements Callable<Void> {
 
@@ -359,14 +357,14 @@ public class TratamentoThreadsCallable implements Callable<Void> {
     private PrintStream saida;
 
     public TratamentoThreadsCallable(Future<String> futureWS,
-            Future<String> futureBanco, PrintStream saidaCliente) {
+                                     Future<String> futureBanco, PrintStream saidaCliente) {
         this.futureWS = futureWS;
         this.futureBD = futureBanco;
         this.saida = saidaCliente;
     }
 
     /* Não queremos devolver nada, então usamos um tipo que representa nada: Void */
-    public Void call() { 
+    public Void call() {
 
         System.out.println("Aguardando resultados do future WS e BD");
 
@@ -375,14 +373,14 @@ public class TratamentoThreadsCallable implements Callable<Void> {
             String numeroMagico = this.futureWS.get(20, TimeUnit.SECONDS);
             String numeroMagico2 = this.futureBD.get(20, TimeUnit.SECONDS);
 
-            this.saidaCliente.println("Resultado do comando c2: " + numeroMagico + ", " + numeroMagico2);
+            this.saida.println("Resultado do comando c2: " + numeroMagico + ", " + numeroMagico2);
 
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
 
             System.out.println("Timeout: Cancelando a execução do comando c2");
 
             /* Caso ocorra exceção é reportado e é forçado o encerramento das threads em execução (cancel(true)) */
-            this.saidaCliente.println("Timeout na execução do comando c2");
+            this.saida.println("Timeout na execução do comando c2");
             this.futureWS.cancel(true);
             this.futureBD.cancel(true);
         }
@@ -393,7 +391,6 @@ public class TratamentoThreadsCallable implements Callable<Void> {
     }
 }
 ```
-
 
 > Obs: Nesse caso, não seria necessário utilizar o ***Callable***, pois a tarefa vai unir os resultados e devolver na saída do cliente nenhum retorno. Desta forma, poderíamos utilizar a interface ***Runnable***, mas como existe um *Generics* do tipo ***Void*** que tem a característica de devolver um valor nulo, foi utilizado para continuar com a prática da interface Callable.
 
