@@ -26,6 +26,7 @@ public class ServidorDeTarefas {
         this.threadPool = Executors.newCachedThreadPool(new CustomFactoryThread());
         this.isRodando = new AtomicBoolean(Boolean.TRUE);
         this.queueCommands = new ArrayBlockingQueue<>(2); // Capacidade de processo que podem ficar na fila
+        iniciarConsumidores();
     }
 
     /* Iniciado o processo para os consumidores */

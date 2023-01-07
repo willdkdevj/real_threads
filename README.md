@@ -357,7 +357,8 @@ public class TratamentoThreadsCallable implements Callable<Void> {
     private PrintStream saida;
 
     public TratamentoThreadsCallable(Future<String> futureWS,
-                                     Future<String> futureBanco, PrintStream saidaCliente) {
+                                     Future<String> futureBanco, 
+                                     PrintStream saidaCliente) {
         this.futureWS = futureWS;
         this.futureBD = futureBanco;
         this.saida = saidaCliente;
@@ -396,6 +397,72 @@ public class TratamentoThreadsCallable implements Callable<Void> {
 
 
 <img align="middle" width="400" height="340" src="https://github.com/willdkdevj/real_threads/blob/master/assets/structure.png">
+
+## Threads em Fila (BlockingQueue) - Simulando Mensageria
+Temos cenários que queremos que nossa aplicação entregue uma informação para uma outra aplicação, mas não queremos qualquer tipo de devolutiva. Só queremos entregar a informação e encerrar a comunicação ou o processo.
+
+Desta forma, a outra aplicação que deve se virar para receber esta informação e processa-la, mas e se outras aplicações também encaminharem informações para este servidor processar? Ele vai ter que ordenar estas informações para *"consumir"*. Portanto existirá o cliente que nomeamos de *"produtor"*, que são estas aplicações que encaminham informações para serem processadas, que produzirá um comando e enviará esse comando para o servidor, na qual deverá guardar esses comandos em algum tipo de armazenamento, como uma coleção que chamamos de *Commands Queue*, vamos guardar isso dentro de uma fila.
+
+ O servidor deverá ficar checando de tempos em tempos para ver se existem comandos a serem processados. Esse conceito de terem aplicações produtoras, um local para agrupamento desta produção e consumidores que retiram estas informações para serem consumidas se chama ***Mensageria***.
+
+ Existe uma coleção no pacote ***Collection*** que simula o processo de thread que bloqueia o seu processamento até haver uma ação que a libere, está coleção tem o nome de *BlockingQueue*. Nela podemos setar um valor limite que ela pode receber elementos e quando este limite for atingido ela só permitirá mais inclusão se ocorrer saída de elementos que estejam na coleção. Desta maneira, foi incluso na classe *ServidorDeTarefas* o valor limite de 2.
+ ```java
+    /* Capacidade de processo que podem ficar na fila */
+    this.queueCommands = new ArrayBlockingQueue<>(2); 
+ ```
+
+ Desta forma, incluiremos na classe *DistribuidorDeTarefas* o atributo deste tipo de coleção e utilizaremos o método *put()* para inserirmos comando que o servidor deve processar, como setamos um valor limite para a coleção, ao atingir o valor limite ela será bloqueada.
+```java
+    case "c3":
+        /* Processo será bloqueado caso a lista fique cheia */
+        try {
+            this.queueCommands.put(comando); // Método bloqueante
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        saidaCliente.println("Comando C3 adicionado na fila");
+        break;
+```
+Legal! O método *put()* está fazendo o papel dos produtores na qual adiciona "comandos" a lista a fim de serem processados pelo servidor. Agora precisamos dos consumidores para pegarem estes comandos para serem processados e desbloquear a inserção de mais comandos ou evita-la que ela seja bloqueada ao verificar que existem comandos a serem processados.
+
+Desta forma, foi criado a classe ** na qual implementa a classe *Runnable*. Por que Runnable? Simples! A aplicação que envia o comando não aguarda devolutiva, isto significa que ela não aguarda valor de retorno. 
+```java
+public class CommandConsumer implements Runnable{
+    private BlockingQueue<String> queue;
+
+    public CommandConsumer(BlockingQueue<String> queue) {
+        this.queue = queue;
+    }
+
+    @Override
+    public void run() {
+        try{
+            String comando = null;
+            while ((comando= queue.take()) != null) {
+                System.out.println("Consumindo comando " + comando + ", " + Thread.currentThread().getName());
+                Thread.sleep(20000);
+            }
+        } catch (InterruptedException ie) {
+            throw new RuntimeException(ie);
+        }
+
+    }
+}
+```
+Assim informamos que ela receberá um *BlockingQueue* para processar seu comando. Portanto, para simular o processamento invocamos o método *take()* que retira o elemento da fila e a entrega (instancia) uma variável (do tipo String) e simulamos o processamento ao pausar a thread por 20 segundos.
+
+O laço **while** é para que o processo seja repetido até que não haja mais elementos na lista.
+
+Então, para criarmos estas threads consumidoras, na classe *ServidorDeTarefas* foi criado o método iniciarConsumidores() a fim de instancias as classes que implementam o Runnable e passadas para o nosso Pool de threads para permitir sua execução.
+```java
+    private void iniciarConsumidores() {
+        int qtdCondumidores = 2;
+        for (int i = 0; i < qtdCondumidores; i++) {
+            CommandConsumer tarefa = new CommandConsumer(queueCommands);
+            this.threadPool.execute(tarefa);
+        }
+    }
+```
 
 Ufa! E este é o fim do projeto de Thread para simular um ambiente de Client/Servidor.
 
